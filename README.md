@@ -24,7 +24,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Act
 Комплект размещается в `%LOCALAPPDATA%\Brodex\App`, native launcher компилируется средствами установленного .NET Framework. Для другого пути указывай одинаковый `-InstallDir` во всех командах. Администратор не требуется. Скрипт не скачивает зависимости.
 
 3. В `chrome://extensions` включи режим разработчика, выбери «Загрузить распакованное расширение» и папку `%LOCALAPPDATA%\Brodex\App\extension`.
-4. Скопируй выданный Chrome ID:
+4. Открой «Подробнее» у Brodex и включи «Разрешить использование в режиме инкогнито». Скопируй выданный Chrome ID:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Action Register -ExtensionId ВСТАВЬ_ID_ИЗ_CHROME
@@ -32,7 +32,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Act
 
 5. Перезагрузи расширение. Установщик напечатает команду `codex mcp add brodex -- ...`. Выполни её или добавь MCP через настройки Codex: команда — абсолютный путь к node.exe, аргумент — путь к `Brodex\App\bridge\server.cjs`.
 6. Скопируй `%LOCALAPPDATA%\Brodex\App\skill\brodex` в `%CODEX_HOME%\skills` либо `%USERPROFILE%\.codex\skills`. Существующий навык предварительно сохрани отдельно.
-7. Перезапусти подключение MCP/чат при необходимости и попроси агента использовать Brodex и проверить `status`. Доступ к инкогнито включается отдельно в настройках расширения.
+7. Перезапусти подключение MCP/чат при необходимости и попроси агента использовать Brodex и проверить `status`.
 
 Если уже зарегистрирован другой Brodex, Register откажется переключать его молча. `-ReplaceRegistration` означает намеренное переключение; прежний путь сохраняется в `registration-before.json`. Регистрация штатного расширения OpenAI не меняется.
 

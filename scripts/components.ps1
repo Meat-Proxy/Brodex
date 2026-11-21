@@ -63,7 +63,7 @@ try{
    $ledger.mcp=$created[0] | ConvertTo-Json -Depth 20 -Compress;Save-Ledger
   }
   Write-Output 'Files, skill and MCP installed. Browser connection is NOT yet verified.'
-  Write-Output ('USER STEP: Open chrome://extensions yourself, enable Developer mode, Load unpacked: '+(Join-Path $target 'extension')+'. Send the displayed extension ID to Codex.')
+  Write-Output ('USER STEP: Open chrome://extensions yourself, enable Developer mode, Load unpacked: '+(Join-Path $target 'extension')+'. Open Brodex Details and enable Allow in Incognito. Send the displayed extension ID to Codex.')
  }else{
   # Preflight all externally installed components before removing any of them.
   $inventory=Get-Content -LiteralPath (Join-Path $target 'files.json') -Raw | ConvertFrom-Json
