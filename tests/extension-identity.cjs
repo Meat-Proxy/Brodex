@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {idFromKey,fromManifest}=require('../scripts/extension-identity.cjs');
+const identities=require('../scripts/extension-identities.json');
+assert.equal(identities.public.id,'obommdbooabdkphocbelglolmlelanhc');
+assert.equal(identities.development.id,'lbhaembbiidhigjahnpfnkjogaljgbca');
+for(const item of Object.values(identities))assert.equal(idFromKey(item.key),item.id);
+assert.notEqual(identities.public.id,identities.development.id);
+assert.equal(fromManifest(path.join(__dirname,'../extension/manifest.json')),identities.public.id);
+assert.throws(()=>idFromKey(''));
+assert.throws(()=>idFromKey(Buffer.from('not a public key').toString('base64')));
+assert.equal(JSON.parse(fs.readFileSync(path.join(__dirname,'../extension/manifest.json'))).key,identities.public.key);
+console.log('PASS: pinned public and development identities, manifest correspondence, invalid keys refused');

@@ -32,6 +32,7 @@ if($Action -eq 'Install'){
   & $PSCommandPath -Action Stage -InstallDir $target -NodePath $NodePath
  }
  Assert-Owned $target
+ & $PSCommandPath -Action Register -InstallDir $target -ReplaceRegistration:$ReplaceRegistration
  & $PSCommandPath -Action Connect -InstallDir $target -CodexHome $CodexHome -CodexCommand $CodexCommand
  exit
 }
@@ -46,6 +47,10 @@ if($Action -eq 'Stage'){
  $nodeMajor=& $NodePath -p 'parseInt(process.versions.node)'
  if($LASTEXITCODE -ne 0 -or [int]$nodeMajor -lt 20){throw 'Node.js 20 or later is required.'}
  if(Test-Path -LiteralPath $target){Assert-Owned $target}
+ $newId=& $NodePath (Join-Path $sourceRoot 'scripts\extension-identity.cjs') (Join-Path $sourceRoot 'extension\manifest.json')
+ if($LASTEXITCODE -ne 0){throw 'Cannot determine packaged extension identity'}
+ $oldOrigin=Join-Path $target 'bridge\allowed-origin.txt'
+ if((Test-Path -LiteralPath $oldOrigin) -and (Get-Content -LiteralPath $oldOrigin -Raw).Trim() -ne "chrome-extension://$newId/"){throw 'Extension identity changed. Stop the old installation and use the documented clean reinstall; no files were replaced.'}
  if(Test-Path -LiteralPath $previous){throw 'Previous rollback copy exists. Archive it before another update.'}
  $compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
  if(!(Test-Path -LiteralPath $compiler)){$compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe'}
@@ -78,7 +83,7 @@ if($Action -eq 'Stage'){
  }catch{if($moved -and !(Test-Path -LiteralPath $target)){Move-Item -LiteralPath $previous -Destination $target};throw}
  Write-Output "Staged: $target"
  Write-Output "Load unpacked in Chrome: $(Join-Path $target 'extension')"
- Write-Output 'Then run this script with -Action Register -ExtensionId <Chrome ID> and the same -InstallDir.'
+ Write-Output 'Then run this script with -Action Register and the same -InstallDir. Extension ID is derived from the packaged public key.'
  exit
 }
 Assert-Owned $target
@@ -94,8 +99,11 @@ if($Action -eq 'Rollback'){
  Write-Output "Restored previous code. Current code retained at $retained. Reload extension and restart MCP."
  exit
 }
-if($ExtensionId -notmatch '^[a-p]{32}$'){throw 'Provide the extension ID shown by Chrome.'}
 $state=Get-Content -LiteralPath (Join-Path $target 'installation.json') -Raw | ConvertFrom-Json
+$derivedId=& $state.node (Join-Path $target 'scripts\extension-identity.cjs') (Join-Path $target 'extension\manifest.json')
+if($LASTEXITCODE -ne 0 -or $derivedId -notmatch '^[a-p]{32}$'){throw 'Cannot determine installed extension identity'}
+if($ExtensionId -and $ExtensionId -ne $derivedId){throw 'Supplied extension ID differs from the packaged public key'}
+$ExtensionId=$derivedId
 $bridge=Join-Path $target 'bridge'
 $manifest=Join-Path $bridge 'com.brodex.bridge.json'
 $old=$null

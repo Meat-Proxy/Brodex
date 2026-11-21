@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Brodex",
   "description": "Экспериментальное управление Chrome через локальный MCP.",
-  "version": "2.53.1",
+  "version": "2.53.2",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Brodex",
@@ -40,11 +40,12 @@
   "background": {
     "service_worker": "background.js"
   },
-  "version_name": "2.53.1",
+  "version_name": "2.53.2",
   "icons": {
     "16": "images/brodex-16.png",
     "32": "images/brodex-32.png",
     "48": "images/brodex-48.png",
     "128": "images/brodex-128.png"
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxyic09tLt+RcCCfzYe7iQj6D3coQPLT1s0sS4eLOcvgo5VGJovJ7Jh3taduKsrehuXRWC+9yVmLuyWFDoZm+/ZFl/vGB6oYpjoFbwKOFONFbKhqpw88Ib8awhWgklgd8VroRseQftQaJTnft7xpNGk5OpHSL6JjaU0RIADIkM8gXTo0zgU1+vWkfmNcSuYJ0286/UAnEk8emhqxKmcZzbOZ+DJGw7W7TD7B0z1WkrbPWF29MNNU5I8K9fVuWxQepSD9oV31RD6aadPVxJIcdpTKj1qJF0Jga42BMOJx6Sx2jcDzyM1xiCM55AeRPNcp7bozO4m3pLoLTTuScbMqGhQIDAQAB"
 }
