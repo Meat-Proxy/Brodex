@@ -1,0 +1,9 @@
+node_modules/
+.test-output/
+.runtime/
+bridge/bridge-config.json
+bridge/node-path.txt
+bridge/allowed-origin.txt
+bridge/com.brodex.bridge.json
+bridge/*.exe
+*.log

@@ -1,0 +1,5 @@
+const fs=require('node:fs'),path=require('node:path'),{spawnSync}=require('node:child_process');
+const out=path.resolve(__dirname,'.test-output');fs.mkdirSync(out,{recursive:true});
+const cases=['tests/launcher.cjs','tests/first-run.cjs','tests/bootstrap.cjs','tests/bridge-config.cjs','catalog/readiness-test.cjs','catalog/card-test.cjs','catalog/dom-test.cjs','catalog/coverage-test.cjs','catalog/relations-test.cjs','catalog/inspection-test.cjs','catalog/test.cjs','tests/catalog-route.cjs','tests/action-v2.cjs','tests/action-v2-frames.cjs','tests/action-v2-mcp.cjs','tests/action-v2-native.cjs','tests/diagnostics.cjs'];
+const results=cases.map(test=>{const r=spawnSync(process.execPath,[path.join(__dirname,test)],{encoding:'utf8',timeout:60000});const result={test,exit_code:r.status,stdout:r.stdout,stderr:r.stderr,error:r.error?.message};console.log(test,r.status===0?'PASS':'FAIL');return result;});
+fs.writeFileSync(path.join(out,'tests.json'),JSON.stringify({at:new Date().toISOString(),synthetic_browser:true,results},null,2));if(results.some(r=>r.exit_code!==0))process.exitCode=1;

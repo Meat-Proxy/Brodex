@@ -1,0 +1,12 @@
+{
+  "name": "brodex",
+  "version": "2.53.0",
+  "private": true,
+  "description": "Experimental Chrome control through a local MCP bridge",
+  "scripts": {
+    "test": "node run-tests.cjs",
+    "test:bootstrap": "node tests/bootstrap.cjs"
+  },
+  "license": "MIT",
+  "author": "Meat-Proxy"
+}

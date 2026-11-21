@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+const {chromium}=require(process.env.BRODEX_PLAYWRIGHT_MODULE || 'playwright');
+const {createBrodexCatalog}=require('./catalog.js');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.BRODEX_CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const page=await browser.newPage({viewport:{width:800,height:600}});await page.goto('about:blank');
+ await page.setContent('<style>button{width:120px;height:40px;margin:10px}#covered{position:absolute;top:100px;left:10px}#overlay{position:absolute;top:100px;left:10px;width:150px;height:70px;background:black;z-index:2}#off{position:absolute;top:2000px}#transparent{opacity:0}#pointer{pointer-events:none}</style><button id="clear">Clear</button><button id="disabled" disabled>Disabled</button><button id="pointer">Pointer</button><button id="covered">Covered</button><div id="overlay"></div><button id="off">Offscreen</button><button id="transparent">Transparent</button><div id="host"></div><details><summary>Closed</summary><button id="closed">Closed content</button></details>');
+ await page.evaluate(()=>{document.querySelector('#host').attachShadow({mode:'open'}).innerHTML='<button id="shadow">Shadow</button>';globalThis.events=0;for(const name of ['click','focusin','input','pointermove','scroll'])addEventListener(name,()=>events++,true);});
+ await page.evaluate(s=>{globalThis.catalog=eval('('+s+')')();},createBrodexCatalog.toString());
+ const read=o=>page.evaluate(o=>catalog.read(o),o);
+ const details=async id=>{const p=await read({limit:50,timeout_ms:250});const o=p.objects.find(o=>o.dom.id===id);assert.ok(o,id);assert.equal(o.visibility.occlusion.status,'not_requested');return (await read({mode:'details',ref:o.ref,observation_id:p.observation_id})).objects[0];};
+ let o=await details('clear');assert.equal(o.visibility.occluded,false);assert.equal(o.capabilities.candidates[0].assessment,'requires_preparation');assert.equal(o.coverage.sections.operations.safe_execution,'not_checked');
+ o=await details('covered');assert.equal(o.visibility.occluded,true);assert.ok(o.capabilities.candidates[0].blockers.includes('sampled_points_blocked'));
+ o=await details('off');assert.equal(o.visibility.in_viewport,false);assert.equal(o.visibility.occluded,null);assert.equal(o.visibility.occlusion.reason,'outside_viewport');
+ o=await details('disabled');assert.ok(o.capabilities.candidates[0].blockers.includes('disabled'));
+ o=await details('pointer');assert.equal(o.visibility.occluded,null);assert.ok(o.capabilities.candidates[0].blockers.includes('pointer_events_none'));
+ o=await details('shadow');assert.equal(o.visibility.occluded,false);assert.equal(o.scope.shadow_dom,true);
+ o=await details('closed');assert.equal(o.visibility.rendered,false);assert.equal(o.visibility.in_viewport,false);
+ const body=await read({mode:'children',limit:50});assert.ok(!body.objects.some(o=>o.dom.id==='transparent'));
+ assert.equal(await page.evaluate(()=>events),0);assert.equal(await page.evaluate(()=>scrollY),0);
+ console.log(JSON.stringify({passed:true,checks:['overview_no_hit_test','clear_requires_preparation','overlay_blocks','offscreen_unknown_occlusion','disabled','pointer_events_none','open_shadow_hit','closed_details_not_rendered','no_input_or_scroll']}));
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
