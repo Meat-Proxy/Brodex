@@ -1,6 +1,6 @@
 {
   "name": "brodex",
-  "version": "2.53.2",
+  "version": "2.53.3",
   "private": true,
   "description": "Experimental Chrome control through a local MCP bridge",
   "scripts": {
