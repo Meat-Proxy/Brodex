@@ -17,7 +17,7 @@ $leaf=Split-Path $target -Leaf
 $previous=Join-Path $parent ($leaf+'.previous')
 $registry='HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.brodex.bridge'
 function Assert-Owned([string]$dir){
- if((Get-Item -LiteralPath $dir).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Installation cannot be a link or junction.'}
+ if((Get-Item -LiteralPath $dir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Installation cannot be a link or junction.'}
  $state=Get-Content -LiteralPath (Join-Path $dir 'installation.json') -Raw | ConvertFrom-Json
  if($state.product -ne 'Brodex' -or $state.directory -ne $target){throw 'Unrecognized installation; no files were replaced.'}
 }

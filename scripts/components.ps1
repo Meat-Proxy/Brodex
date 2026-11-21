@@ -4,7 +4,7 @@ $ErrorActionPreference='Stop'
 function Safe-Tree([string]$dir,[bool]$Recurse=$true){
  $p=[IO.Path]::GetFullPath($dir)
  $walk=$p
- while($walk){if((Test-Path -LiteralPath $walk) -and ((Get-Item -LiteralPath $walk).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw "Linked path refused: $walk"};$walk=Split-Path $walk -Parent}
+ while($walk){if((Test-Path -LiteralPath $walk) -and ((Get-Item -LiteralPath $walk -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw "Linked path refused: $walk"};$walk=Split-Path $walk -Parent}
  if($Recurse -and (Test-Path -LiteralPath $p)){Get-ChildItem -LiteralPath $p -Recurse -Force | ForEach-Object {if($_.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Linked child refused: $($_.FullName)"}}}
 }
 function Fingerprint([string]$dir){
@@ -34,12 +34,14 @@ function Save-Ledger { $temp=$ledgerPath+'.tmp';[IO.File]::WriteAllText($temp,($
 function MCP-List {
  $raw=& $CodexCommand mcp list --json
  if($LASTEXITCODE -ne 0){throw 'Cannot inspect MCP configuration; no blind overwrite/removal'}
- return @($raw | ConvertFrom-Json | Where-Object {$_.name -eq 'brodex'})
+ # Windows PowerShell 5.1 can emit the parsed JSON array as one pipeline object.
+ $parsed=$raw | ConvertFrom-Json
+ return @($parsed | Where-Object {$_.name -eq 'brodex'})
 }
 $oldHome=$env:CODEX_HOME
 try{
  $env:CODEX_HOME=$CodexHome
- $existing=MCP-List
+ $existing=@(MCP-List)
  if($Action -eq 'Connect'){
   if($existing.Count -and !$ledger.mcp){throw 'Existing MCP brodex is not owned by this installer; preserve it and resolve explicitly'}
   if($ledger.mcp -and $existing.Count -and (($existing[0] | ConvertTo-Json -Depth 20 -Compress) -ne $ledger.mcp)){throw 'MCP configuration changed outside installer'}
@@ -58,7 +60,7 @@ try{
   if(!$existing.Count){
    & $CodexCommand mcp add brodex -- $installation.node (Join-Path $target 'bridge\server.cjs')
    if($LASTEXITCODE -ne 0){throw 'MCP add failed; installed skill is recorded'}
-   $created=MCP-List
+   $created=@(MCP-List)
    if($created.Count -ne 1){throw 'MCP registration could not be verified'}
    $ledger.mcp=$created[0] | ConvertTo-Json -Depth 20 -Compress;Save-Ledger
   }
@@ -79,7 +81,7 @@ try{
   $registry='HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.brodex.bridge'
   $manifest=Join-Path $target 'bridge\com.brodex.bridge.json'
   if(Test-Path -LiteralPath $registry){if((Get-Item -LiteralPath $registry).GetValue('') -ne $manifest){throw 'Another native host owns the registration; removal stopped'}}
-  if($existing.Count){& $CodexCommand mcp remove brodex;if($LASTEXITCODE -ne 0 -or (MCP-List).Count){throw 'MCP removal failed'}}
+  if($existing.Count){& $CodexCommand mcp remove brodex;if($LASTEXITCODE -ne 0 -or @(MCP-List).Count){throw 'MCP removal failed'}}
   $ledger.mcp=$null;Save-Ledger
   if(Test-Path -LiteralPath $skill){Safe-Tree $skill;Remove-Item -LiteralPath $skill -Recurse -Force}
   $ledger.skill_hash=$null;Save-Ledger
