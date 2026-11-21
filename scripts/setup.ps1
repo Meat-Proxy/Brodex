@@ -1,10 +1,12 @@
 [CmdletBinding()]
 param(
- [ValidateSet('Stage','Register','Rollback')][string]$Action='Stage',
+ [ValidateSet('Stage','Register','Rollback','Install','Connect','Uninstall')][string]$Action='Stage',
  [string]$InstallDir=(Join-Path $env:LOCALAPPDATA 'Brodex\App'),
  [string]$ExtensionId,
  [string]$NodePath,
- [switch]$ReplaceRegistration
+ [switch]$ReplaceRegistration,
+ [string]$CodexHome,
+ [string]$CodexCommand='codex'
 )
 $ErrorActionPreference='Stop'
 $sourceRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -20,6 +22,24 @@ function Assert-Owned([string]$dir){
  if($state.product -ne 'Brodex' -or $state.directory -ne $target){throw 'Unrecognized installation; no files were replaced.'}
 }
 function Write-Utf8([string]$file,[string]$body){[IO.File]::WriteAllText($file,$body,(New-Object Text.UTF8Encoding($false)))}
+function Save-Inventory([string]$dir){
+ $excluded=@((Join-Path $dir 'files.json'),(Join-Path $dir 'components.json'),(Join-Path $dir 'components.json.tmp'))
+ $items=@(Get-ChildItem -LiteralPath $dir -File -Recurse -Force | Where-Object {$_.FullName -notin $excluded} | ForEach-Object {@{path=$_.FullName.Substring($dir.Length+1);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
+ Write-Utf8 (Join-Path $dir 'files.json') (ConvertTo-Json -InputObject $items -Depth 4)
+}
+if($Action -eq 'Install'){
+ if(!(Test-Path -LiteralPath $target)){
+  & $PSCommandPath -Action Stage -InstallDir $target -NodePath $NodePath
+ }
+ Assert-Owned $target
+ & $PSCommandPath -Action Connect -InstallDir $target -CodexHome $CodexHome -CodexCommand $CodexCommand
+ exit
+}
+if($Action -in @('Connect','Uninstall')){
+ Assert-Owned $target
+ & (Join-Path $PSScriptRoot 'components.ps1') -Action $Action -InstallDir $target -CodexHome $CodexHome -CodexCommand $CodexCommand
+ exit
+}
 if($Action -eq 'Stage'){
  if(!$NodePath){$NodePath=(Get-Command node -ErrorAction Stop).Source}
  $NodePath=(Resolve-Path -LiteralPath $NodePath).Path
@@ -46,8 +66,11 @@ if($Action -eq 'Stage'){
   }
   $oldRegistration=Join-Path $target 'registration-before.json'
   if(Test-Path -LiteralPath $oldRegistration){Copy-Item -LiteralPath $oldRegistration -Destination $stage}
+  $ledger=Join-Path $target 'components.json'
+  if(Test-Path -LiteralPath $ledger){Copy-Item -LiteralPath $ledger -Destination $stage}
  }
  Write-Utf8 (Join-Path $stage 'installation.json') (@{product='Brodex';directory=$target;version=(Get-Content -LiteralPath (Join-Path $stage 'extension\VERSION.txt') -Raw).Trim();node=$NodePath;staged_at=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json)
+ Save-Inventory $stage
  $moved=$false
  try{
   if(Test-Path -LiteralPath $target){Move-Item -LiteralPath $target -Destination $previous;$moved=$true}
@@ -62,6 +85,9 @@ Assert-Owned $target
 if($Action -eq 'Rollback'){
  if(!(Test-Path -LiteralPath $previous)){throw 'No previous installation.'}
  Assert-Owned $previous
+ # External skill/MCP still belong to the current installation until Connect reconciles them.
+ $currentLedger=Join-Path $target 'components.json'
+ if(Test-Path -LiteralPath $currentLedger){Copy-Item -LiteralPath $currentLedger -Destination (Join-Path $previous 'components.json') -Force}
  $retained=Join-Path $parent ($leaf+'.replaced-'+[guid]::NewGuid().ToString('N'))
  Move-Item -LiteralPath $target -Destination $retained
  try{Move-Item -LiteralPath $previous -Destination $target}catch{Move-Item -LiteralPath $retained -Destination $target;throw}
@@ -88,6 +114,7 @@ if(!(Test-Path -LiteralPath $backup)){Write-Utf8 $backup (@{previous=$old;curren
 New-Item -Path $registry -Force | Out-Null
 Set-Item -LiteralPath $registry -Value $manifest
 if((Get-Item -LiteralPath $registry).GetValue('') -ne $manifest){throw 'Native host registration verification failed.'}
+Save-Inventory $target
 Write-Output 'Native host registered. Reload the extension.'
 Write-Output 'Add MCP through Codex settings, or execute:'
 Write-Output ('codex mcp add brodex -- "'+$state.node+'" "'+(Join-Path $bridge 'server.cjs')+'"')
